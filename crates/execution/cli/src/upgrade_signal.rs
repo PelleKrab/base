@@ -6,8 +6,9 @@ use base_execution_chainspec::BaseChainSpec;
 use base_node_runner::{BaseNodeExtension, BaseRpcContext, FromExtensionConfig, NodeHooks};
 use base_upgrade_signal::{
     AlloyUpgradeSignalReader, UpgradeSignalApplySummary, UpgradeSignalConfig,
-    UpgradeSignalDefaults, UpgradeSignalMetricLayer, UpgradeSignalMonitor, UpgradeSignalRefresher,
-    UpgradeSignalRuntimeApplier, UpgradeSignalRuntimeValidation, UpgradeSignalSchedule,
+    UpgradeSignalConfigError, UpgradeSignalDefaults, UpgradeSignalMetricLayer,
+    UpgradeSignalMonitor, UpgradeSignalRefresher, UpgradeSignalRuntimeApplier,
+    UpgradeSignalRuntimeValidation, UpgradeSignalSchedule,
 };
 use jsonrpsee::{RpcModule, core::RpcResult, types::ErrorObject};
 use reth_chainspec::EthChainSpec;
@@ -130,6 +131,14 @@ impl ExecutionUpgradeSignal {
     ) -> eyre::Result<()> {
         if !config.signal_config.mode.allows_runtime_admin() {
             return Ok(());
+        }
+
+        let admin_rpc_enabled = ctx.modules.module_config().contains_any(&RethRpcModule::Admin);
+        if !admin_rpc_enabled {
+            return Err(UpgradeSignalConfigError::RuntimeAdminRequiresAdminRpc {
+                flag_hint: "--http.api or --ws.api (include 'admin')",
+            }
+            .into());
         }
 
         let chain_id = ctx.config().chain.chain().id();

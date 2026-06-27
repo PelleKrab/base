@@ -10,8 +10,9 @@ use base_common_chains::ChainConfig;
 use base_common_genesis::RollupConfig;
 use base_consensus_node::{EngineConfig, L1ConfigBuilder, NodeMode, RollupNode, RollupNodeBuilder};
 use base_upgrade_signal::{
-    UpgradeSignalArgs, UpgradeSignalConfig, UpgradeSignalMetricLayer, UpgradeSignalRuntimeApplier,
-    UpgradeSignalRuntimeValidation, UpgradeSignalSchedule, UpgradeSignalStartupMode,
+    UpgradeSignalArgs, UpgradeSignalConfig, UpgradeSignalConfigError, UpgradeSignalMetricLayer,
+    UpgradeSignalRuntimeApplier, UpgradeSignalRuntimeValidation, UpgradeSignalSchedule,
+    UpgradeSignalStartupMode,
 };
 use clap::Args;
 use eyre::Context;
@@ -407,6 +408,16 @@ impl ConsensusNodeArgs {
     ) -> eyre::Result<RollupNode> {
         self.validate_sequencer_key()?;
         let upgrade_signal_config = self.config.upgrade_signal.config()?;
+        if let Some(signal_config) = &upgrade_signal_config {
+            let admin_rpc_enabled =
+                !self.config.rpc_flags.rpc_disabled && self.config.rpc_flags.enable_admin;
+            if signal_config.mode.allows_runtime_admin() && !admin_rpc_enabled {
+                return Err(UpgradeSignalConfigError::RuntimeAdminRequiresAdminRpc {
+                    flag_hint: "--rpc.enable-admin",
+                }
+                .into());
+            }
+        }
         let runtime_validation = overrides
             .upgrade_signal_runtime_validation
             .unwrap_or_else(|| self.upgrade_signal_runtime_validation());
