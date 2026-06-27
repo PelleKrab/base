@@ -114,7 +114,7 @@ impl UpgradeSignalRuntimeApplier {
 mod tests {
     use alloy_primitives::U256;
     use base_common_genesis::{
-        BaseUpgrade, RuntimeUpgradeRegistry, UpgradeActivation, UpgradeActivationSink,
+        BaseUpgrade, RollupConfig, RuntimeUpgradeRegistry, UpgradeActivation, UpgradeActivationSink,
     };
 
     use super::{RuntimeRegistrySink, UpgradeSignalRuntimeApplier};
@@ -248,5 +248,20 @@ mod tests {
         assert_eq!(RuntimeUpgradeRegistry::activation(chain_id, BaseUpgrade::Cobalt), None);
 
         RuntimeUpgradeRegistry::clear_chain(chain_id);
+    }
+
+    #[test]
+    fn rollup_config_sink_reports_bedrock_as_ignored() {
+        let mut sink = RollupConfig::default();
+        let summary = UpgradeSignalRuntimeApplier::apply_schedule_to_sink(
+            9_000_012,
+            &schedule(&[(BaseUpgrade::Bedrock, 42)]),
+            &mut sink,
+        )
+        .unwrap();
+
+        assert_eq!(summary.ignored_upgrades, 1);
+        assert_eq!(summary.applied_upgrades, 0);
+        assert_eq!(summary.cleared_upgrades, 0);
     }
 }

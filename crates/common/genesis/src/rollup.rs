@@ -453,6 +453,9 @@ impl UpgradeActivationSink for RollupConfig {
         upgrade_id: BaseUpgrade,
         activation: UpgradeActivation,
     ) -> Result<bool, Self::Error> {
+        if !upgrade_id.is_contract_backed() {
+            return Ok(false);
+        }
         self.apply_upgrade_activation(upgrade_id, activation);
         Ok(true)
     }
@@ -948,5 +951,23 @@ mod tests {
 
         assert_eq!(cfg.block_number_lower_bound_from_timestamp(20), 5);
         assert_eq!(cfg.block_number_lower_bound_from_timestamp(30), 10);
+    }
+
+    #[test]
+    fn apply_activation_returns_false_for_bedrock() {
+        let mut cfg = RollupConfig::default();
+        let result = cfg
+            .apply_activation(BaseUpgrade::Bedrock, UpgradeActivation::Timestamp(42))
+            .unwrap();
+        assert!(!result);
+    }
+
+    #[test]
+    fn apply_activation_returns_true_for_contract_backed_upgrade() {
+        let mut cfg = RollupConfig::default();
+        let result =
+            cfg.apply_activation(BaseUpgrade::Azul, UpgradeActivation::Timestamp(42)).unwrap();
+        assert!(result);
+        assert_eq!(cfg.upgrades.base.azul, Some(42));
     }
 }
