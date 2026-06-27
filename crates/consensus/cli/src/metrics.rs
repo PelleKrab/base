@@ -175,6 +175,11 @@ impl CliMetrics {
         )
         .set(1);
 
+        Self::record_upgrade_activation_times(config);
+    }
+
+    /// Records the per-upgrade activation timestamp gauge.
+    pub fn record_upgrade_activation_times(config: &RollupConfig) {
         for (upgrade_name, activation_time) in config.upgrades.iter() {
             // Use `-1` as a signal that the upgrade is not scheduled.
             let time: f64 = activation_time.map(|t| t as f64).unwrap_or(-1f64);
@@ -198,6 +203,7 @@ impl CliMetrics {
                 interval.tick().await;
                 let now = current_unix_timestamp();
                 let countdown_config = config.with_runtime_upgrade_overrides();
+                Self::record_upgrade_activation_times(&countdown_config);
                 Self::record_seconds_until_next_upgrade(
                     &countdown_config,
                     now,
